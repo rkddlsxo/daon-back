@@ -6,6 +6,7 @@ import { VolunteersModule } from './volunteers/volunteers.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { BoardModule } from './board/board.module';
 import { RecruitModule } from './recruit/recruit.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -24,7 +25,8 @@ import { RecruitModule } from './recruit/recruit.module';
     VolunteersModule,
     ReviewsModule,
     BoardModule,
-    RecruitModule
+    RecruitModule,
+    AuthModule
   ],
 })
 export class AppModule { }
