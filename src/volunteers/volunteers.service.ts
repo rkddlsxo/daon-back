@@ -1,48 +1,106 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Post } from './entities/post.entity';
+import { Participant } from './entities/participant.entity';
 
 @Injectable()
 export class VolunteersService {
-  private volunteers = [
-    {
-      idx: 1,
-      title: "환경 보호 캠페인",
-      date: "2024-11-20",
-      location: "서울",
-      description: "서울 도심에서 환경 정화 활동"
-    },
-    {
-      idx: 2,
-      title: "노인 복지 봉사",
-      date: "2024-12-01",
-      location: "부산",
-      description: "지역 복지관에서 봉사 활동"
+  constructor(
+    @InjectRepository(Post)
+    private postsRepository: Repository<Post>,
+    @InjectRepository(Participant)
+    private participantsRepository: Repository<Participant>,
+  ) {}
+
+  // 봉사활동 목록 조회
+  async findAll() {
+    return await this.postsRepository.find({
+      relations: ['writer', 'participants'],
+    });
+  }
+
+  // 봉사활동 상세 조회
+  async findOne(idx: number) {
+    const post = await this.postsRepository.findOne({
+      where: { idx },
+      relations: ['writer', 'participants', 'participants.user'],
+    });
+    if (!post) throw new NotFoundException('Post not found');
+    return post;
+  }
+
+  // 봉사활동 등록
+  async create(userId: number, postData: any) {
+    const post = this.postsRepository.create({
+      ...postData,
+      writer_idx: userId,
+    });
+    return await this.postsRepository.save(post);
+  }
+
+  // 봉사활동 수정
+  async update(idx: number, userId: number, updateData: any) {
+    const post = await this.postsRepository.findOne({
+      where: { idx, writer_idx: userId },
+    });
+    if (!post) throw new NotFoundException('Post not found or unauthorized');
+    
+    Object.assign(post, updateData);
+    return await this.postsRepository.save(post);
+  }
+
+  // 봉사활동 삭제
+  async remove(idx: number, userId: number) {
+    const post = await this.postsRepository.findOne({
+      where: { idx, writer_idx: userId },
+    });
+    if (!post) throw new NotFoundException('Post not found or unauthorized');
+    
+    await this.postsRepository.remove(post);
+    return { message: 'Post deleted successfully' };
+  }
+
+  // 봉사활동 참여
+  async participate(postIdx: number, userId: number) {
+    const post = await this.postsRepository.findOne({
+      where: { idx: postIdx },
+      relations: ['participants'],
+    });
+    
+    if (!post) throw new NotFoundException('Post not found');
+    
+    if (post.participants.length >= post.max_participants) {
+      throw new BadRequestException('Maximum participants reached');
     }
-  ];
 
-  getVolunteers() {
-    return this.volunteers;
+    const existingParticipation = await this.participantsRepository.findOne({
+      where: { post_idx: postIdx, user_idx: userId },
+    });
+
+    if (existingParticipation) {
+      throw new BadRequestException('Already participating');
+    }
+
+    const participant = this.participantsRepository.create({
+      post_idx: postIdx,
+      user_idx: userId,
+    });
+
+    return await this.participantsRepository.save(participant);
   }
 
-  getVolunteerDetail(id: string) {
-    return {
-      idx: parseInt(id),
-      title: "환경 보호 캠페인",
-      description: "서울 도심에서 환경 정화 활동",
-      date: "2024-11-20",
-      location: "서울",
-      participants: [
-        {
-          userIdx: 1,
-          name: "김인하",
-          nickname: "선한인하"
-        }
-      ]
-    };
-  }
+  // 봉사활동 참여 취소
+  async cancelParticipation(postIdx: number, userId: number) {
+    const participation = await this.participantsRepository.findOne({
+      where: { post_idx: postIdx, user_idx: userId },
+    });
 
-  applyVolunteer(id: string) {
-    return {
-      message: "봉사활동 신청이 완료되었습니다."
-    };
+    if (!participation) {
+      throw new NotFoundException('Participation not found');
+    }
+
+    await this.participantsRepository.remove(participation);
+    return { message: 'Participation cancelled successfully' };
   }
 }

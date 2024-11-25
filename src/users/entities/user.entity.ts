@@ -5,18 +5,18 @@ export class User {
   @PrimaryGeneratedColumn()
   idx: number;
 
-  @Column({ unique: true })
-  username: string;
-
   @Column()
   password: string;
 
-  @Column({ unique: true })
+  @Column({ length: 100, unique: true })
   email: string;
 
-  @Column({ nullable: true })
+  @Column({ length: 15, nullable: true, unique: true })
   phone: string;
 
   @CreateDateColumn()
   created_at: Date;
+
+  @Column()
+  username: string;
 } 

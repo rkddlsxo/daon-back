@@ -7,6 +7,7 @@ import { ReviewsModule } from './reviews/reviews.module';
 import { BoardModule } from './board/board.module';
 import { RecruitModule } from './recruit/recruit.module';
 import { AuthModule } from './auth/auth.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -26,7 +27,11 @@ import { AuthModule } from './auth/auth.module';
     ReviewsModule,
     BoardModule,
     RecruitModule,
-    AuthModule
+    AuthModule,
+    JwtModule.register({
+      secret: 'your-secret-key',
+      signOptions: { expiresIn: '1h' },
+    }),
   ],
 })
 export class AppModule { }
