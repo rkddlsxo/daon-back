@@ -1,51 +1,44 @@
-import { Controller, Get, Post, Body, Query, Param } from '@nestjs/common';
-
-// DTO 추가
-interface CreateReviewDto {
-  title: string;
-  location: string;
-  content: string;
-}
+import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { ReviewsService } from './reviews.service';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Controller('api/reviews')
 export class ReviewsController {
-    @Get()
-    async getReviews(@Query('volunteerId') volunteerId?: string) {
-        return [
-            {
-                idx: 1,
-                volunteerIdx: 1,
-                content: "좋은 경험이었습니다.",
-                author: "김인하",
-                date: "2024-11-20"
-            }
-        ];
-    }
+  constructor(private readonly reviewsService: ReviewsService) {}
 
-    @Get(':id')
-    async getReviewById(@Param('id') id: string) {
-        return {
-            idx: parseInt(id),
-            title: "노인복지관에서의 특별한 하루",
-            author: "김다온",
-            date: "2024-03-28",
-            location: "서울시 송파구",
-            likes: 15,
-            content: "처음에는 걱정이 많았지만, 어르신들과 함께한 시간이 정말 의미있었습니다. 어르신들의 따뜻한 미소와 감사의 말씀에 제가 더 감사한 하루였습니다."
-        };
-    }
+  @Get('post/:postId')
+  async getPostReviews(@Param('postId') postId: string) {
+    return await this.reviewsService.findAllByPost(+postId);
+  }
 
-    @Post()
-    async createReview(@Body() reviewData: CreateReviewDto) {
-        // 임시로 하드코딩된 응답
-        return {
-            idx: 999,  // 임시 ID
-            title: reviewData.title,
-            location: reviewData.location,
-            content: reviewData.content,
-            author: "임시작성자",  // 나중에 로그인 기능 추가시 실제 사용자 정보로 대체
-            date: new Date().toISOString().split('T')[0],
-            likes: 0
-        };
-    }
+  @Get(':id')
+  async getReview(@Param('id') id: string) {
+    return await this.reviewsService.findOne(+id);
+  }
+
+  @Post('post/:postId')
+  @UseGuards(AuthGuard)
+  async createReview(
+    @Param('postId') postId: string,
+    @Request() req,
+    @Body() reviewData: { rating: number; review_text: string },
+  ) {
+    return await this.reviewsService.create(+postId, req.user.idx, reviewData);
+  }
+
+  @Put(':id')
+  @UseGuards(AuthGuard)
+  async updateReview(
+    @Param('id') id: string,
+    @Request() req,
+    @Body() updateData: { rating?: number; review_text?: string },
+  ) {
+    return await this.reviewsService.update(+id, req.user.idx, updateData);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  async deleteReview(@Param('id') id: string, @Request() req) {
+    return await this.reviewsService.remove(+id, req.user.idx);
+  }
 } 
