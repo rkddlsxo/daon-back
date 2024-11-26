@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Review } from './entities/review.entity';
@@ -96,4 +96,47 @@ export class ReviewsService {
     await this.reviewsRepository.remove(review);
     return { message: 'Review deleted successfully' };
   }
-} 
+
+  // 전체 리뷰 조회
+  async findAll() {
+    try {
+      console.log('Finding all reviews...');
+      const rawReviews = await this.reviewsRepository
+        .createQueryBuilder('review')
+        .innerJoinAndSelect('review.user', 'user', 'review.user_idx = user.idx')
+        .leftJoinAndSelect('review.post', 'post')
+        .select([
+          'review.idx AS reviewIdx',
+          'review.rating AS reviewRating',
+          'review.review_text AS reviewText',
+          'review.created_at AS reviewCreatedAt',
+          'user.idx AS userIdx',
+          'user.username AS username',
+          'post.idx AS postIdx',
+          'post.title AS postTitle',
+          'post.location AS postLocation',
+        ])
+        .orderBy('review.created_at', 'DESC')
+        .getRawMany();
+
+      // 프론트엔드에서 기대하는 형식으로 변환
+      const formattedReviews = rawReviews.map(review => ({
+        idx: review.reviewIdx,
+        title: review.postTitle,
+        author: review.username,
+        date: review.reviewCreatedAt,
+        location: review.postLocation,
+        likes: 0,
+        content: review.reviewText,
+        preview: review.reviewText.substring(0, 100),
+        rating: review.reviewRating
+      }));
+
+      console.log('Formatted reviews:', formattedReviews);
+      return formattedReviews;
+    } catch (error) {
+      console.error('Error in findAll:', error);
+      throw new InternalServerErrorException('리뷰 목록을 불러오는데 실패했습니다.');
+    }
+  }
+}
