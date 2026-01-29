@@ -2,7 +2,7 @@ import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } f
 import { ReviewsService } from './reviews.service';
 import { AuthGuard } from '../auth/auth.guard';
 
-@Controller('api/reviews')
+@Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
@@ -40,5 +40,10 @@ export class ReviewsController {
   @UseGuards(AuthGuard)
   async deleteReview(@Param('id') id: string, @Request() req) {
     return await this.reviewsService.remove(+id, req.user.idx);
+  }
+
+  @Get()
+  async getAllReviews() {
+    return await this.reviewsService.findAll();
   }
 } 
